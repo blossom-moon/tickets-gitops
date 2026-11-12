@@ -1,0 +1,60 @@
+# ЛР7: Prometheus, Alertmanager, Grafana.
+# Перемістити в argocd-apps/:  git mv next/lab7/*.yaml argocd-apps/
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 80.13.0
+    helm:
+      releaseName: kps
+      valuesObject:
+        fullnameOverride: kps
+        # компоненти control plane minikube недоступні для збору — вимкнено
+        kubeEtcd: { enabled: false }
+        kubeControllerManager: { enabled: false }
+        kubeScheduler: { enabled: false }
+        kubeProxy: { enabled: false }
+        prometheus:
+          prometheusSpec:
+            # брати ServiceMonitor/PrometheusRule з усіх namespace, без мітки release
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            retention: 2d
+            resources:
+              requests: { cpu: 100m, memory: 512Mi }
+              limits: { memory: 1536Mi }
+        alertmanager:
+          alertmanagerSpec:
+            resources:
+              requests: { cpu: 10m, memory: 64Mi }
+        grafana:
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              searchNamespace: ALL
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              uid: loki
+              access: proxy
+              url: http://loki-gateway.monitoring.svc.cluster.local
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

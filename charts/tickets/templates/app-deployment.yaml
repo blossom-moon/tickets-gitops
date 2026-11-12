@@ -1,0 +1,22 @@
+{{- if not .Values.rollout.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tickets.app.fullname" . }}
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "app") | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: {{ .Values.app.progressDeadlineSeconds }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.app.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.app.rollingUpdate.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "app") | nindent 6 }}
+  template:
+    {{- include "tickets.app.podTemplate" . | nindent 4 }}
+{{- end }}

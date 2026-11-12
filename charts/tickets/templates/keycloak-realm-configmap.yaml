@@ -1,0 +1,63 @@
+{{- if .Values.keycloak.enabled }}
+{{- /* ${...} — плейсхолдери Keycloak, значення беруться зі змінних оточення контейнера (Secret) */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tickets.keycloak.fullname" . }}-realm
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "keycloak") | nindent 4 }}
+data:
+  realm.json: |
+    {
+      "realm": {{ .Values.keycloak.realm | quote }},
+      "enabled": true,
+      "roles": {
+        "realm": [
+          { "name": "APP_ADMIN" },
+          { "name": "APP_USER" }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": {{ .Values.keycloak.clientId | quote }},
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "${LAB1_CLIENT_SECRET}",
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "redirectUris": [{{ printf "http://%s/*" .Values.ingress.appHost | quote }}, "http://localhost:8081/*"],
+          "webOrigins": ["+"],
+          "protocolMappers": [
+            {
+              "name": "realm-roles",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-realm-role-mapper",
+              "config": {
+                "claim.name": "realm_access.roles",
+                "multivalued": "true",
+                "jsonType.label": "String",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true"
+              }
+            }
+          ]
+        }
+      ],
+      "users": [
+        {
+          "username": "admin1",
+          "email": "admin1@tickets.local",
+          "emailVerified": true,
+          "firstName": "Lab",
+          "lastName": "Admin",
+          "enabled": true,
+          "credentials": [
+            { "type": "password", "value": "${LAB1_USER_PASSWORD}", "temporary": false }
+          ],
+          "realmRoles": ["APP_ADMIN", "APP_USER", {{ printf "default-roles-%s" .Values.keycloak.realm | quote }}]
+        }
+      ]
+    }
+{{- end }}

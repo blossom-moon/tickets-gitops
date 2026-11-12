@@ -1,0 +1,73 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tickets.keycloak.fullname" . }}
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "keycloak") | nindent 4 }}
+spec:
+  replicas: {{ .Values.keycloak.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "keycloak") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tickets.labels" (dict "ctx" $ "component" "keycloak") | nindent 8 }}
+      annotations:
+        checksum/realm: {{ include (print $.Template.BasePath "/keycloak-realm-configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: keycloak
+          image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+          args: ["start-dev", "--import-realm"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.keycloak.adminUser | quote }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tickets.secretName" . }}
+                  key: keycloak-admin-password
+            - name: LAB1_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tickets.secretName" . }}
+                  key: keycloak-client-secret
+            - name: LAB1_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tickets.secretName" . }}
+                  key: app-user-password
+            - name: KC_PROXY
+              value: edge
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+      volumes:
+        - name: realm
+          configMap:
+            name: {{ include "tickets.keycloak.fullname" . }}-realm
+{{- end }}

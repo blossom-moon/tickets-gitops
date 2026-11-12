@@ -1,0 +1,13 @@
+{{- if .Values.dashboard.enabled }}
+# ЛР7: дашборд Grafana; sidecar Grafana підхоплює ConfigMap з міткою grafana_dashboard
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tickets.app.fullname" . }}-dashboard
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "dashboard") | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  tickets-dashboard.json: |-
+    {{- .Files.Get "files/dashboard.json" | replace "__NAMESPACE__" .Release.Namespace | replace "__APP__" (include "tickets.app.fullname" .) | nindent 4 }}
+{{- end }}

@@ -1,0 +1,153 @@
+# Значення за замовчуванням відповідають середовищу розробки (dev).
+
+nameOverride: ""
+fullnameOverride: ""
+
+app:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/blossom-moon/tickets-app
+    # Порожній тег = appVersion з Chart.yaml
+    tag: ""
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  containerPort: 8081
+  service:
+    type: NodePort
+    port: 80
+    # Порожнє значення = Kubernetes призначає порт сам (чарт можна встановити двічі)
+    nodePort: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  # Параметри конфігурації застосунку (потрапляють у ConfigMap)
+  config:
+    environment: dev
+    message: "Ticket service (dev)"
+    javaToolOptions: "-XX:MaxRAMPercentage=75"
+    # Частка запитів (0..1), що отримують HTTP 500 (ЛР7, «погана» версія)
+    failRate: "0"
+  probes:
+    path: /api/public/hello
+  # Через скільки секунд оновлення без прогресу вважається невдалим (Degraded)
+  progressDeadlineSeconds: 120
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+db:
+  # PostgreSQL з томом ReadWriteOnce — лише 1 репліка
+  replicaCount: 1
+  image:
+    repository: postgres
+    tag: "16"
+  name: lab1_db
+  username: lab1
+  port: 5432
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 1Gi
+    # Порожнє значення = StorageClass кластера за замовчуванням
+    storageClass: ""
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "23.0"
+  realm: lab1
+  clientId: lab1-client
+  adminUser: admin
+  # Адреса Keycloak для браузера, якщо Ingress вимкнено (kubectl port-forward)
+  publicUrl: http://localhost:8080
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+  appHost: tickets.local
+  keycloakHost: keycloak.tickets.local
+
+# Навчальні значення для dev. Реальні паролі сюди не записуються,
+# для інших середовищ передаються через --set.
+secrets:
+  # Ім'я Secret, створеного вручну (kubectl create secret). Якщо задано — чарт не створює Secret,
+  # а значення нижче ігноруються. Використовується в GitOps (ЛР5), щоб паролі не потрапляли в Git.
+  existingSecret: ""
+  dbPassword: "dev-db-password"
+  keycloakAdminPassword: "dev-admin-password"
+  clientSecret: "dev-client-secret"
+  userPassword: "dev-user-password"
+
+hooks:
+  # pre-upgrade хук: перевірка доступності БД перед оновленням
+  dbCheck:
+    enabled: true
+
+tests:
+  enabled: true
+  image: curlimages/curl:8.10.1
+
+# ЛР6: Argo Rollouts замість Deployment
+rollout:
+  enabled: false
+  canary:
+    maxSurge: "25%"
+    maxUnavailable: 0
+    steps:
+      - setWeight: 25
+      - pause: { duration: 30s }
+      - setWeight: 50
+      - pause: {}
+      - setWeight: 75
+      - pause: { duration: 30s }
+
+# ЛР7: метрики
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 15s
+  prometheusRule:
+    enabled: false
+
+# ЛР7: аналіз canary за метриками Prometheus
+analysis:
+  enabled: false
+  # Після якого кроку (індекс з 0 у rollout.canary.steps) вставляється крок analysis
+  afterStep: 0
+  prometheusAddress: http://kps-prometheus.monitoring.svc:9090
+  threshold: 0.95
+  initialDelay: 30s
+  interval: 20s
+  count: 4
+  failureLimit: 1
+
+# ЛР7: дашборд Grafana (ConfigMap з міткою grafana_dashboard)
+dashboard:
+  enabled: false
+
+# ЛР7: генератор навантаження всередині кластера
+loadgen:
+  enabled: false
+  replicas: 2
+  sleepSeconds: "0.05"

@@ -1,0 +1,27 @@
+# Застосунок tickets: Helm-чарт з цього ж репозиторію, значення для minikube
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tickets
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/blossom-moon/tickets-gitops.git
+    targetRevision: main
+    path: charts/tickets
+    helm:
+      releaseName: tickets
+      valueFiles:
+        - values-minikube.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kostetska
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false          # ЛР5 п.6a: спершу false (OutOfSync), потім true
+    syncOptions:
+      - CreateNamespace=true

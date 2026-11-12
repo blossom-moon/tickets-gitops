@@ -1,0 +1,31 @@
+{{- if .Values.analysis.enabled }}
+# ЛР7: частка успішних (не 5xx) запитів нової версії; нижче порогу — автоматичний abort
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "tickets.fullname" . }}-success-rate
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "analysis") | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  args:
+    - name: namespace
+    - name: pod-hash
+  metrics:
+    - name: success-rate
+      initialDelay: {{ .Values.analysis.initialDelay }}
+      interval: {{ .Values.analysis.interval }}
+      count: {{ .Values.analysis.count }}
+      failureLimit: {{ .Values.analysis.failureLimit }}
+      successCondition: result[0] >= {{ .Values.analysis.threshold }}
+      provider:
+        prometheus:
+          address: {{ .Values.analysis.prometheusAddress }}
+          query: |
+            (
+              sum(rate(http_server_requests_seconds_count{namespace="{{"{{"}}args.namespace{{"}}"}}", rollouts_pod_template_hash="{{"{{"}}args.pod-hash{{"}}"}}", uri!~"/metrics|/health.*|/api/public/hello", status!~"5.."}[1m]))
+              /
+              sum(rate(http_server_requests_seconds_count{namespace="{{"{{"}}args.namespace{{"}}"}}", rollouts_pod_template_hash="{{"{{"}}args.pod-hash{{"}}"}}", uri!~"/metrics|/health.*|/api/public/hello"}[1m]))
+            ) or on() vector(0)
+{{- end }}

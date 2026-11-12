@@ -1,0 +1,30 @@
+# ЛР6: контролер Argo Rollouts, встановлюється з Git через Argo CD.
+# Перемістити в argocd-apps/:  git mv next/lab6/argo-rollouts.yaml argocd-apps/
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.39.1
+    helm:
+      releaseName: argo-rollouts
+      valuesObject:
+        dashboard:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

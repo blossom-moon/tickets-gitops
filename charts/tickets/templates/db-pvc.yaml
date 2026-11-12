@@ -1,0 +1,16 @@
+{{- if .Values.db.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tickets.db.fullname" . }}-data
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "db") | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.db.persistence.storageClass }}
+  storageClassName: {{ .Values.db.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.db.persistence.size }}
+{{- end }}

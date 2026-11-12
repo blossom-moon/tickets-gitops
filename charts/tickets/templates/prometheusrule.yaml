@@ -1,0 +1,27 @@
+{{- if .Values.metrics.prometheusRule.enabled }}
+# ЛР7 (d*): алерт на частку помилок 5xx > 5%
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "tickets.app.fullname" . }}
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "app") | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  groups:
+    - name: {{ include "tickets.app.fullname" . }}.rules
+      rules:
+        - alert: TicketsHighErrorRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{namespace="{{ .Release.Namespace }}", service="{{ include "tickets.app.fullname" . }}", status=~"5.."}[1m]))
+            /
+            sum(rate(http_server_requests_seconds_count{namespace="{{ .Release.Namespace }}", service="{{ include "tickets.app.fullname" . }}"}[1m]))
+            > 0.05
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Частка помилок 5xx {{ include "tickets.app.fullname" . }} перевищує 5%"
+            description: "Поточне значення: {{"{{"}} $value | humanizePercentage {{"}}"}}"
+{{- end }}

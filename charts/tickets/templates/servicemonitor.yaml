@@ -1,0 +1,25 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+# ЛР7: Prometheus збирає /metrics з усіх подів застосунку
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "tickets.app.fullname" . }}
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "app") | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  selector:
+    matchLabels:
+      {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "app") | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  # мітка хешу шаблону пода — щоб відрізняти метрики canary і stable
+  podTargetLabels:
+    - rollouts-pod-template-hash
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}

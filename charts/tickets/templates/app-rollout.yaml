@@ -1,0 +1,40 @@
+{{- if .Values.rollout.enabled }}
+# Argo Rollouts (ЛР6): замінює Deployment, стратегія canary з values
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "tickets.app.fullname" . }}
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "app") | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: {{ .Values.app.progressDeadlineSeconds }}
+  selector:
+    matchLabels:
+      {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "app") | nindent 6 }}
+  template:
+    {{- include "tickets.app.podTemplate" . | nindent 4 }}
+  strategy:
+    canary:
+      maxSurge: {{ .Values.rollout.canary.maxSurge | quote }}
+      maxUnavailable: {{ .Values.rollout.canary.maxUnavailable }}
+      steps:
+      {{- range $i, $step := .Values.rollout.canary.steps }}
+        - {{ toYaml $step | indent 10 | trim }}
+        {{- if and $.Values.analysis.enabled (eq $i (int $.Values.analysis.afterStep)) }}
+        # ЛР7: перевірка частки успішних запитів нової версії
+        - analysis:
+            templates:
+              - templateName: {{ include "tickets.fullname" $ }}-success-rate
+            args:
+              - name: namespace
+                value: {{ $.Release.Namespace }}
+              - name: pod-hash
+                valueFrom:
+                  podTemplateHashValue: Latest
+        {{- end }}
+      {{- end }}
+{{- end }}

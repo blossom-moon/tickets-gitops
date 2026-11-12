@@ -1,0 +1,16 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tickets.keycloak.fullname" . }}
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "keycloak") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "keycloak") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+{{- end }}

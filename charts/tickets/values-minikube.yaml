@@ -1,0 +1,52 @@
+# Значення для кластера minikube під керуванням Argo CD.
+# Зміни в цьому файлі (commit + push) Argo CD сам доставляє в кластер.
+
+app:
+  replicaCount: 2              # ЛР6: 4
+  image:
+    tag: "1.0.0"               # ЛР5: новий реліз — змінити тег тут
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
+  config:
+    environment: minikube
+    message: "Ticket service (GitOps)"
+    failRate: "0"              # ЛР7: "0.3" — «погана» версія
+
+# Keycloak вимкнено, щоб зекономити пам'ять minikube (публічні ендпоінти працюють без нього)
+keycloak:
+  enabled: false
+
+# Паролі не зберігаються в Git: Secret створюється вручну (див. bootstrap/README.md)
+secrets:
+  existingSecret: tickets-secrets
+
+# Helm-хук і helm test в Argo CD не використовуються
+hooks:
+  dbCheck:
+    enabled: false
+tests:
+  enabled: false
+
+# ЛР6: true (потрібен встановлений Argo Rollouts)
+rollout:
+  enabled: false
+
+# ЛР7: true (потрібен встановлений kube-prometheus-stack)
+metrics:
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false
+analysis:
+  enabled: false
+dashboard:
+  enabled: false
+loadgen:
+  enabled: false

@@ -1,0 +1,22 @@
+# Продакшн-середовище
+app:
+  replicaCount: 3
+  image:
+    tag: "1.1.0"
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: "2"
+      memory: 1536Mi
+  config:
+    environment: prod
+    message: "Ticket service (prod)"
+
+ingress:
+  enabled: true
+  appHost: tickets.local
+  keycloakHost: keycloak.tickets.local

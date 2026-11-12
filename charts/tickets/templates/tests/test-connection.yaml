@@ -1,0 +1,29 @@
+{{- if .Values.tests.enabled }}
+# Тест релізу: helm test <реліз>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "tickets.fullname" . }}-test-connection
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "test") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image | quote }}
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          URL="http://{{ include "tickets.app.fullname" . }}:{{ .Values.app.service.port }}"
+          echo "GET $URL/api/public/hello"
+          curl -fsS "$URL/api/public/hello"; echo
+          echo "GET $URL/api/public/info"
+          INFO=$(curl -fsS "$URL/api/public/info"); echo "$INFO"
+          echo "$INFO" | grep -q '"environment":"{{ .Values.app.config.environment }}"'
+          echo "OK: environment={{ .Values.app.config.environment }}"
+{{- end }}

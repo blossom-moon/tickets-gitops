@@ -1,0 +1,35 @@
+{{- if .Values.loadgen.enabled }}
+# ЛР7: генератор навантаження всередині кластера (цикл curl до сервісу застосунку)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tickets.fullname" . }}-loadgen
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "loadgen") | nindent 4 }}
+spec:
+  replicas: {{ .Values.loadgen.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "loadgen") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "loadgen") | nindent 8 }}
+    spec:
+      containers:
+        - name: curl
+          image: {{ .Values.tests.image | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              URL="http://{{ include "tickets.app.fullname" . }}:{{ .Values.app.service.port }}"
+              while true; do
+                curl -s -o /dev/null "$URL/version"
+                curl -s -o /dev/null "$URL/api/public/info"
+                sleep {{ .Values.loadgen.sleepSeconds }}
+              done
+          resources:
+            requests: { cpu: 20m, memory: 16Mi }
+            limits: { cpu: 200m, memory: 64Mi }
+{{- end }}

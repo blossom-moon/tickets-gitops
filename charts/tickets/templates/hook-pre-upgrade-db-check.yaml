@@ -1,0 +1,41 @@
+{{- if .Values.hooks.dbCheck.enabled }}
+# Хук pre-upgrade: перед оновленням перевіряється, що БД доступна.
+# Якщо БД недоступна, Job завершується з помилкою і оновлення не виконується.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "tickets.fullname" . }}-pre-upgrade-db-check
+  labels:
+    {{- include "tickets.labels" (dict "ctx" $ "component" "hook") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        {{- include "tickets.selectorLabels" (dict "ctx" $ "component" "hook") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: db-check
+          image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              echo "pre-upgrade: release={{ .Release.Name }} revision={{ .Release.Revision }}"
+              for i in $(seq 1 20); do
+                if pg_isready -h {{ include "tickets.db.fullname" . }} -p {{ .Values.db.port }} -U {{ .Values.db.username }}; then
+                  echo "DB is ready, upgrade allowed"; exit 0
+                fi
+                sleep 3
+              done
+              echo "DB is not ready, upgrade aborted"; exit 1
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+{{- end }}

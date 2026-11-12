@@ -1,0 +1,10 @@
+apiVersion: v2
+name: tickets
+description: Helm-чарт сервісу продажу квитків (Spring Boot + PostgreSQL + Keycloak)
+type: application
+# Версія самого чарта (шаблонів і values). 0.2.0 — GitOps, Rollout, моніторинг (ЛР5–7).
+version: 0.2.0
+# Версія застосунку (тег образу за замовчуванням). Змінюється з новим релізом застосунку.
+appVersion: "1.0.0"
+maintainers:
+  - name: Христина Костецька

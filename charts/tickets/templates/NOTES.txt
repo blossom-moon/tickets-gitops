@@ -1,0 +1,28 @@
+Реліз {{ .Release.Name }} встановлено в namespace {{ .Release.Namespace }} (ревізія {{ .Release.Revision }}).
+Образ застосунку: {{ include "tickets.app.image" . }}, реплік: {{ .Values.app.replicaCount }}, середовище: {{ .Values.app.config.environment }}.
+
+Перевірити стан подів:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Відкрити застосунок:
+{{- if .Values.ingress.enabled }}
+  1. Додати в hosts:  <IP>  {{ .Values.ingress.appHost }} {{ .Values.ingress.keycloakHost }}
+     (IP = `minikube ip`; для драйвера docker на Windows/macOS — 127.0.0.1 і запущений `minikube tunnel`)
+  2. Відкрити http://{{ .Values.ingress.appHost }}/api/public/info
+{{- else if eq .Values.app.service.type "NodePort" }}
+  minikube service {{ include "tickets.app.fullname" . }} -n {{ .Release.Namespace }} --url
+  або:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "tickets.app.fullname" . }} 8081:{{ .Values.app.service.port }}
+  http://localhost:8081/api/public/info
+{{- else }}
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "tickets.app.fullname" . }} 8081:{{ .Values.app.service.port }}
+  http://localhost:8081/api/public/info
+{{- end }}
+{{- if not .Values.ingress.enabled }}
+
+Вхід через Keycloak (сторінка /): додатково
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "tickets.keycloak.fullname" . }} 8080:8080
+{{- end }}
+
+Тест релізу:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
