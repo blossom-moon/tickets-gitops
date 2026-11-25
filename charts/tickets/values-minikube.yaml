@@ -4,7 +4,7 @@
 app:
   replicaCount: 2              # ЛР6: 4
   image:
-    tag: "1.1.0"               # ЛР5: новий реліз — змінити тег тут
+    tag: "1.1.0"
   service:
     type: ClusterIP
   resources:
