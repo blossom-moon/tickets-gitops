@@ -22,6 +22,6 @@ spec:
   syncPolicy:
     automated:
       prune: true
-      selfHeal: false          # ЛР5 п.6a: спершу false (OutOfSync), потім true
+      selfHeal: true          # ЛР5 п.6a: спершу false (OutOfSync), потім true
     syncOptions:
       - CreateNamespace=true
