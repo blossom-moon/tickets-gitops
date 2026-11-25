@@ -2,7 +2,7 @@
 # Зміни в цьому файлі (commit + push) Argo CD сам доставляє в кластер.
 
 app:
-  replicaCount: 2              # ЛР6: 4
+  replicaCount: 4
   image:
     tag: "1.1.0"
   service:
@@ -36,7 +36,7 @@ tests:
 
 # ЛР6: true (потрібен встановлений Argo Rollouts)
 rollout:
-  enabled: false
+  enabled: true
 
 # ЛР7: true (потрібен встановлений kube-prometheus-stack)
 metrics:
